@@ -1,121 +1,84 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState } from 'react';
+import axios from 'axios';
+import DropZone from './components/DropZone';
+import InvoicePreview from './components/InvoicePreview';
+import XmlViewer from './components/XmlViewer';
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+ const [loading, setLoading] = useState(false);
+ const [error, setError] = useState(null);
+ const [invoiceData, setInvoiceData] = useState(null);
+ const [xml, setXml] = useState(null);
+ const [view, setView] = useState('upload'); // 'upload' | 'preview' | 'xml'
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+ async function handleFileAccepted(file) {
+  setLoading(true);
+  setError(null);
+  try {
+   const formData = new FormData();
+   formData.append('pdf', file);
+   const res = await axios.post('/api/convert', formData);
+   setInvoiceData(res.data.invoiceData);
+   setXml(res.data.xml);
+   setView('preview');
+  } catch (err) {
+   setError(err.response?.data?.error || 'Błąd połączenia z serwerem');
+  } finally {
+   setLoading(false);
+  }
+ }
 
-      <div className="ticks"></div>
+ async function handleDataChange(newData) {
+  setInvoiceData(newData);
+  try {
+   const res = await axios.post('/api/convert/generate-xml', { invoiceData: newData });
+   setXml(res.data.xml);
+  } catch {
+   // silent — XML refresh is best-effort
+  }
+ }
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+ function handleReset() {
+  setInvoiceData(null);
+  setXml(null);
+  setError(null);
+  setView('upload');
+ }
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+ return (
+  <div className="app">
+   <header className="app-header">
+    <div className="header-inner">
+     <h1>pdf2ksef</h1>
+     <span className="header-subtitle">Konwerter faktur PDF do XML KSeF FA(3)</span>
+    </div>
+    {view !== 'upload' && (
+     <button className="btn-reset" onClick={handleReset}>Nowa faktura</button>
+    )}
+   </header>
+
+   <main className="app-main">
+    {view === 'upload' && (
+     <>
+      <DropZone onFileAccepted={handleFileAccepted} loading={loading} />
+      {error && <div className="error-box">{error}</div>}
+     </>
+    )}
+    {view === 'preview' && invoiceData && (
+     <InvoicePreview
+      data={invoiceData}
+      onChange={handleDataChange}
+      onShowXml={() => setView('xml')}
+     />
+    )}
+    {view === 'xml' && xml && (
+     <XmlViewer xml={xml} onBack={() => setView('preview')} />
+    )}
+   </main>
+
+   <footer className="app-footer">
+    <p>pdf2ksef — Maciej Bąk | Schemat KSeF FA(3) · MF 2025</p>
+   </footer>
+  </div>
+ );
 }
-
-export default App
