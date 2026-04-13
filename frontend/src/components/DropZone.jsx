@@ -1,34 +1,31 @@
-import { useCallback } from 'react';
+import React from 'react';
 import { useDropzone } from 'react-dropzone';
 
-export default function DropZone({ onFileAccepted, loading }) {
- const onDrop = useCallback((acceptedFiles) => {
-  if (acceptedFiles.length > 0) {
-   onFileAccepted(acceptedFiles[0]);
-  }
- }, [onFileAccepted]);
-
+export default function DropZone({ onFileDrop }) {
  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-  onDrop,
   accept: { 'application/pdf': ['.pdf'] },
-  multiple: false,
-  disabled: loading,
+  maxFiles: 1,
+  onDrop: (acceptedFiles) => {
+   if (acceptedFiles.length > 0) {
+    onFileDrop(acceptedFiles[0]);
+   }
+  }
  });
 
  return (
-  <div {...getRootProps()} className={`dropzone ${isDragActive ? 'active' : ''} ${loading ? 'disabled' : ''}`}>
+  <div {...getRootProps({ className: `dropzone${isDragActive ? ' active' : ''}` })}>
    <input {...getInputProps()} />
-   {loading ? (
-    <div className="loading-state">
-     <div className="spinner" />
-     <p>Przetwarzanie faktury...</p>
-    </div>
-   ) : isDragActive ? (
-    <p>Upuść plik PDF tutaj...</p>
+   <div className="dropzone-icon">📄</div>
+   {isDragActive ? (
+    <>
+     <h2>Upuść plik PDF tutaj</h2>
+     <p>Zwolnij, aby rozpocząć przetwarzanie</p>
+    </>
    ) : (
     <>
-     <p>Przeciągnij fakturę PDF lub kliknij, aby wybrać</p>
-     <span className="dropzone-hint">Obsługiwane: PDF z warstwą tekstową</span>
+     <h2>Przeciągnij fakturę PDF</h2>
+     <p>lub kliknij, aby wybrać plik z dysku</p>
+     <span className="hint">Wybierz plik PDF</span>
     </>
    )}
   </div>
