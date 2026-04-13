@@ -33,7 +33,7 @@ function generateXml(data) {
  const { seller, buyer, invoice, items, totals, annotations, payment, exchangeRate, correction } = data;
 
  const now = new Date();
- const dataWytworzenia = now.toISOString().replace(/\.\d{3}Z$/, '+00:00').substring(0, 19) + '+00:00';
+ const dataWytworzenia = now.toISOString().replace(/\.\d{3}Z$/, 'Z');
 
  const doc = create({ version: '1.0', encoding: 'UTF-8' });
 
@@ -225,7 +225,7 @@ function generateXml(data) {
   platnosc.ele('FormaPlatnosci').txt(
    payment.form === 'przelew' ? '6' :
     payment.form === 'gotówka' || payment.form === 'gotowka' ? '1' :
-     payment.form === 'karta' ? '5' : '6'
+     payment.form === 'karta' ? '2' : '6'
   );
  }
  if (payment && payment.bankAccount) {

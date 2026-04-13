@@ -111,6 +111,7 @@ Ważne zasady:
 - Jeśli eksport, użyj "0 EX"
 - Stawka "nieop." lub "not applicable" lub "nieopodatkowane" to "np I"; "np II" tylko dla art. 100 ust.1 pkt 4 — użyj np I jeśli masz wątpliwości
 - W sekcji totals: dla stawki "np I" użyj pola rate_np_I, dla "np II" użyj rate_np_II
+- ADNOTACJA odwrotneObciazenie (P_18=true): ustaw TRUE gdy na fakturze widnieje adnotacja "odwrotne obciążenie" lub "reverse charge" — dotyczy to zarówno krajowego odwrotnego obciążenia (art. 17 ustawy o VAT) jak i usług B2B dla zagranicznych kontrahentów (art. 28b, stawka np I), gdzie nabywca jest zobowiązany do rozliczenia podatku. Zgodnie z art. 106e ust. 1 pkt 18 ustawy o VAT, każda faktura z adnotacją "odwrotne obciążenie" wymaga P_18=true w KSeF.
 - Wartości liczbowe jako liczby (nie stringi), zaokrąglone do 2 miejsc po przecinku
 - Daty w formacie YYYY-MM-DD
 - NIP bez kresek i spacji
