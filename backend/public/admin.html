@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>pdf2ksef — Panel admina</title>
+ <style>
+  :root {
+   --primary: #2563eb;
+   --primary-dark: #1d4ed8;
+   --bg: #f8fafc;
+   --surface: #ffffff;
+   --border: #e2e8f0;
+   --text: #1e293b;
+   --text-muted: #64748b;
+   --radius: 12px;
+   --gemini: #1a73e8;
+   --claude: #d97706;
+   --auto: #16a34a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 1rem 2rem; display: flex; align-items: center; gap: 1rem; }
+  .header h1 { font-size: 1.2rem; font-weight: 700; color: var(--primary); }
+  .header span { color: var(--text-muted); font-size: 0.9rem; }
+
+  .main { max-width: 1000px; margin: 0 auto; padding: 2rem; display: flex; flex-direction: column; gap: 1.5rem; }
+
+  .key-bar { display: flex; gap: 0.75rem; align-items: center; }
+  .key-bar input { flex: 1; padding: 0.55rem 0.9rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; font-family: monospace; }
+  .key-bar input:focus { outline: none; border-color: var(--primary); }
+  .key-bar button { padding: 0.55rem 1.25rem; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 500; }
+  .key-bar button:hover { background: var(--primary-dark); }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .card-header { padding: 0.75rem 1.25rem; background: #f8fafc; border-bottom: 1px solid var(--border); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; }
+  .card-body { padding: 1.25rem; }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; }
+  .stat { text-align: center; padding: 1rem; border: 1px solid var(--border); border-radius: 10px; }
+  .stat-value { font-size: 2rem; font-weight: 700; line-height: 1; }
+  .stat-label { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.35rem; }
+  .stat.gemini .stat-value { color: var(--gemini); }
+  .stat.claude .stat-value { color: var(--claude); }
+  .stat.total .stat-value { color: var(--text); }
+
+  .provider-switch { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+  .provider-btn { padding: 0.6rem 1.5rem; border: 2px solid var(--border); border-radius: 8px; background: var(--surface); cursor: pointer; font-size: 0.9rem; font-weight: 600; color: var(--text-muted); transition: all 0.15s; }
+  .provider-btn:hover { border-color: #94a3b8; }
+  .provider-btn.active-auto { border-color: var(--auto); color: var(--auto); background: #f0fdf4; }
+  .provider-btn.active-gemini { border-color: var(--gemini); color: var(--gemini); background: #eff6ff; }
+  .provider-btn.active-claude { border-color: var(--claude); color: var(--claude); background: #fffbeb; }
+
+  .current-badge { font-size: 0.8rem; padding: 0.25rem 0.75rem; border-radius: 20px; font-weight: 600; }
+  .badge-auto { background: #dcfce7; color: var(--auto); }
+  .badge-gemini { background: #dbeafe; color: var(--gemini); }
+  .badge-claude { background: #fef3c7; color: var(--claude); }
+
+  .fallback-box { background: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.85rem; }
+  .fallback-box strong { display: block; margin-bottom: 0.25rem; }
+  .fallback-box span { color: var(--text-muted); font-size: 0.8rem; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th { text-align: left; padding: 0.5rem 0.75rem; background: #f8fafc; border-bottom: 1px solid var(--border); font-weight: 600; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+  td { padding: 0.55rem 0.75rem; border-bottom: 1px solid #f1f5f9; }
+  tr:last-child td { border-bottom: none; }
+
+  .badge-ai { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
+  .badge-gemini { background: #dbeafe; color: var(--gemini); }
+  .badge-claude { background: #fef3c7; color: var(--claude); }
+
+  .empty { color: var(--text-muted); text-align: center; padding: 2rem; font-size: 0.9rem; }
+  .error-msg { color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.9rem; }
+  .refresh-btn { font-size: 0.8rem; color: var(--text-muted); background: none; border: 1px solid var(--border); border-radius: 6px; padding: 0.25rem 0.6rem; cursor: pointer; }
+  .refresh-btn:hover { background: #f1f5f9; }
+  .months-grid { display: flex; flex-direction: column; gap: 0.5rem; }
+  .month-row { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid #f1f5f9; }
+  .month-row:last-child { border-bottom: none; }
+  .month-bars { display: flex; gap: 1rem; font-size: 0.85rem; }
+  .month-bar-gemini { color: var(--gemini); font-weight: 600; }
+  .month-bar-claude { color: var(--claude); font-weight: 600; }
+ </style>
+</head>
+<body>
+
+<div class="header">
+ <h1>pdf2ksef</h1>
+ <span>Panel administratora</span>
+</div>
+
+<div class="main">
+
+ <div class="key-bar">
+  <input type="password" id="adminKey" placeholder="Klucz admina..." />
+  <button onclick="loadStats()">Załaduj</button>
+ </div>
+
+ <div id="errorMsg" style="display:none" class="error-msg"></div>
+
+ <div id="content" style="display:none">
+
+  <!-- Przełącznik AI -->
+  <div class="card">
+   <div class="card-header">
+    Dostawca AI
+    <span id="currentBadge" class="current-badge"></span>
+   </div>
+   <div class="card-body">
+    <div class="provider-switch">
+     <button class="provider-btn" id="btn-auto" onclick="setProvider('auto')">Auto (Gemini + Claude fallback)</button>
+     <button class="provider-btn" id="btn-gemini" onclick="setProvider('gemini')">Tylko Gemini</button>
+     <button class="provider-btn" id="btn-claude" onclick="setProvider('claude')">Tylko Claude</button>
+    </div>
+   </div>
+  </div>
+
+  <!-- Statystyki bieżący miesiąc -->
+  <div class="card">
+   <div class="card-header">
+    Statystyki — bieżący miesiąc (<span id="monthLabel"></span>)
+    <button class="refresh-btn" onclick="loadStats()">Odśwież</button>
+   </div>
+   <div class="card-body">
+    <div class="stats-grid">
+     <div class="stat gemini">
+      <div class="stat-value" id="monthGemini">0</div>
+      <div class="stat-label">Gemini</div>
+     </div>
+     <div class="stat claude">
+      <div class="stat-value" id="monthClaude">0</div>
+      <div class="stat-label">Claude</div>
+     </div>
+     <div class="stat total">
+      <div class="stat-value" id="monthTotal">0</div>
+      <div class="stat-label">Razem</div>
+     </div>
+    </div>
+   </div>
+  </div>
+
+  <!-- Statystyki łącznie -->
+  <div class="card">
+   <div class="card-header">Statystyki łącznie (wszystkie miesiące)</div>
+   <div class="card-body">
+    <div class="stats-grid" style="margin-bottom:1rem">
+     <div class="stat gemini">
+      <div class="stat-value" id="totalGemini">0</div>
+      <div class="stat-label">Gemini łącznie</div>
+     </div>
+     <div class="stat claude">
+      <div class="stat-value" id="totalClaude">0</div>
+      <div class="stat-label">Claude łącznie</div>
+     </div>
+    </div>
+    <div class="months-grid" id="monthsGrid"></div>
+   </div>
+  </div>
+
+  <!-- Ostatni fallback -->
+  <div id="fallbackCard" class="card" style="display:none">
+   <div class="card-header">Ostatni fallback Gemini → Claude</div>
+   <div class="card-body">
+    <div class="fallback-box">
+     <strong id="fallbackTime"></strong>
+     <span id="fallbackReason"></span>
+    </div>
+   </div>
+  </div>
+
+  <!-- Historia -->
+  <div class="card">
+   <div class="card-header">Historia analiz (ostatnie <span id="historyCount">0</span>)</div>
+   <div class="card-body" style="padding:0">
+    <div id="historyContainer">
+     <div class="empty">Brak historii</div>
+    </div>
+   </div>
+  </div>
+
+ </div>
+</div>
+
+<script>
+ const API_BASE = window.location.origin;
+
+ function getKey() {
+  return document.getElementById('adminKey').value.trim();
+ }
+
+ function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = msg;
+  el.style.display = 'block';
+  document.getElementById('content').style.display = 'none';
+ }
+
+ function hideError() {
+  document.getElementById('errorMsg').style.display = 'none';
+ }
+
+ function formatTime(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleString('pl-PL', { dateStyle: 'short', timeStyle: 'medium' });
+ }
+
+ function updateProviderUI(provider) {
+  ['auto', 'gemini', 'claude'].forEach(p => {
+   const btn = document.getElementById('btn-' + p);
+   btn.className = 'provider-btn' + (p === provider ? ' active-' + p : '');
+  });
+  const badge = document.getElementById('currentBadge');
+  const labels = { auto: 'Auto', gemini: 'Gemini', claude: 'Claude' };
+  badge.textContent = labels[provider] || provider;
+  badge.className = 'current-badge badge-' + provider;
+ }
+
+ async function loadStats() {
+  const key = getKey();
+  if (!key) { showError('Podaj klucz admina'); return; }
+  hideError();
+
+  try {
+   const res = await fetch(`${API_BASE}/api/admin/stats?key=${encodeURIComponent(key)}`);
+   if (res.status === 401) { showError('Nieprawidłowy klucz admina'); return; }
+   if (!res.ok) { showError('Błąd serwera: ' + res.status); return; }
+
+   const data = await res.json();
+   document.getElementById('content').style.display = 'flex';
+   document.getElementById('content').style.flexDirection = 'column';
+   document.getElementById('content').style.gap = '1.5rem';
+
+   // Provider
+   updateProviderUI(data.currentProvider);
+
+   // Bieżący miesiąc
+   document.getElementById('monthLabel').textContent = data.thisMonth.month;
+   document.getElementById('monthGemini').textContent = data.thisMonth.gemini || 0;
+   document.getElementById('monthClaude').textContent = data.thisMonth.claude || 0;
+   document.getElementById('monthTotal').textContent = (data.thisMonth.gemini || 0) + (data.thisMonth.claude || 0);
+
+   // Łącznie
+   document.getElementById('totalGemini').textContent = data.totalAll.gemini || 0;
+   document.getElementById('totalClaude').textContent = data.totalAll.claude || 0;
+
+   // Miesiące
+   const grid = document.getElementById('monthsGrid');
+   const months = Object.entries(data.allMonths || {}).sort((a, b) => b[0].localeCompare(a[0]));
+   if (months.length === 0) {
+    grid.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem">Brak danych</div>';
+   } else {
+    grid.innerHTML = months.map(([month, v]) => `
+     <div class="month-row">
+      <span style="font-weight:600">${month}</span>
+      <div class="month-bars">
+       <span class="month-bar-gemini">Gemini: ${v.gemini || 0}</span>
+       <span class="month-bar-claude">Claude: ${v.claude || 0}</span>
+      </div>
+     </div>`).join('');
+   }
+
+   // Fallback
+   if (data.lastFallback) {
+    document.getElementById('fallbackCard').style.display = 'block';
+    document.getElementById('fallbackTime').textContent = formatTime(data.lastFallback);
+    document.getElementById('fallbackReason').textContent = data.lastFallbackReason || '';
+   }
+
+   // Historia
+   const history = data.history || [];
+   document.getElementById('historyCount').textContent = history.length;
+   const container = document.getElementById('historyContainer');
+   if (history.length === 0) {
+    container.innerHTML = '<div class="empty">Brak historii — prześlij pierwszą fakturę</div>';
+   } else {
+    container.innerHTML = `
+     <table>
+      <thead>
+       <tr>
+        <th>Data i godzina</th>
+        <th>Numer faktury</th>
+        <th>Data faktury</th>
+        <th>AI</th>
+       </tr>
+      </thead>
+      <tbody>
+       ${history.map(h => `
+        <tr>
+         <td>${formatTime(h.time)}</td>
+         <td>${h.invoiceNumber || '—'}</td>
+         <td>${h.invoiceDate || '—'}</td>
+         <td><span class="badge-ai badge-${h.provider}">${h.provider === 'gemini' ? 'Gemini' : 'Claude'}</span></td>
+        </tr>`).join('')}
+      </tbody>
+     </table>`;
+   }
+
+   // Zapamiętaj klucz
+   localStorage.setItem('adminKey', key);
+
+  } catch (err) {
+   showError('Błąd połączenia: ' + err.message);
+  }
+ }
+
+ async function setProvider(provider) {
+  const key = getKey();
+  if (!key) { showError('Podaj klucz admina'); return; }
+
+  try {
+   const res = await fetch(`${API_BASE}/api/admin/config?key=${encodeURIComponent(key)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ forceProvider: provider })
+   });
+   if (!res.ok) { showError('Błąd zmiany providera'); return; }
+   updateProviderUI(provider);
+  } catch (err) {
+   showError('Błąd połączenia: ' + err.message);
+  }
+ }
+
+ // Załaduj zapamiętany klucz
+ const savedKey = localStorage.getItem('adminKey');
+ if (savedKey) {
+  document.getElementById('adminKey').value = savedKey;
+  loadStats();
+ }
+
+ // Auto-odświeżanie co 60 sekund
+ setInterval(() => {
+  if (getKey()) loadStats();
+ }, 60000);
+</script>
+</body>
+</html>

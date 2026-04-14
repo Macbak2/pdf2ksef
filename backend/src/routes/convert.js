@@ -3,6 +3,7 @@ const multer = require('multer');
 const { extractPdfText } = require('../services/pdfExtractor');
 const { parseInvoiceWithAI } = require('../services/invoiceParser');
 const { generateXml } = require('../services/xmlGenerator');
+const { trackUsage, trackHistory } = require('../services/usageTracker');
 
 const router = express.Router();
 
@@ -32,8 +33,13 @@ router.post('/', upload.single('pdf'), async (req, res) => {
    });
   }
 
-  const invoiceData = await parseInvoiceWithAI(pdfText);
+  const { data: invoiceData, provider } = await parseInvoiceWithAI(pdfText);
   const xml = generateXml(invoiceData);
+
+  try {
+   trackUsage(provider);
+   trackHistory(provider, invoiceData.invoice?.number, invoiceData.invoice?.issueDate);
+  } catch {}
 
   res.json({ invoiceData, xml });
  } catch (err) {

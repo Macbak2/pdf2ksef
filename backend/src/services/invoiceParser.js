@@ -1,6 +1,11 @@
 const Anthropic = require('@anthropic-ai/sdk');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { trackFallback, getConfig } = require('./usageTracker');
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const anthropicClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const geminiClient = process.env.GEMINI_API_KEY
+ ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+ : null;
 
 const SYSTEM_PROMPT = `Jesteś ekspertem od polskich faktur VAT i systemu KSeF (Krajowy System e-Faktur).
 Twoim zadaniem jest wyodrębnić dane z tekstu faktury PDF i zwrócić je jako poprawny JSON.
@@ -46,7 +51,7 @@ Zwróć dane w dokładnie tej strukturze JSON:
   "items": [
     {
       "lp": 1,
-      "name": "Nazwa towaru/usługi",
+      "name": "Nazwa towaru/usługi — przepisz DOKŁADNIE tak jak na fakturze, znak po znaku",
       "pkwiu": "Kod PKWiU lub null",
       "quantity": "ilość jako liczba",
       "unit": "szt, usł, kg, m itp.",
@@ -118,22 +123,60 @@ Ważne zasady:
 - WALUTA KWOT: Wszystkie wartości w polach totals (net, vat) oraz w pozycjach faktury (netValue, vatAmount, grossValue, unitPriceNet) podaj w walucie faktury (pole invoice.currency). Jeśli faktura jest w EUR, wszystkie kwoty mają być w EUR — NIE przeliczaj na PLN.
 - KODOWANIE ZNAKÓW: Tekst PDF może zawierać artefakty błędnego kodowania. Popraw wszystkie błędnie zakodowane polskie znaki — np. "PrzemyÅl" popraw na "Przemyśl", "Å‚" na "ł", "Å›" na "ś", "Ä™" na "ę", "Ä…" na "ą", "Å¼" na "ż", "Åº" na "ź", "Ä" na "ć", "Åˆ" na "ń", "Å"" na "ó".`;
 
-async function parseInvoiceWithAI(pdfText) {
- const message = await client.messages.create({
+function parseJson(text) {
+ const cleaned = text.trim().replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+ try {
+  return JSON.parse(cleaned);
+ } catch (e) {
+  throw new Error('AI zwróciło nieprawidłowy JSON: ' + e.message);
+ }
+}
+
+async function parseWithGemini(pdfText) {
+ const model = geminiClient.getGenerativeModel({ model: 'gemini-2.5-flash' });
+ const prompt = SYSTEM_PROMPT + '\n\n' + USER_PROMPT_TEMPLATE(pdfText);
+ const result = await model.generateContent(prompt);
+ return parseJson(result.response.text());
+}
+
+async function parseWithClaude(pdfText) {
+ const message = await anthropicClient.messages.create({
   model: 'claude-opus-4-6',
   max_tokens: 4096,
   messages: [{ role: 'user', content: USER_PROMPT_TEMPLATE(pdfText) }],
   system: SYSTEM_PROMPT
  });
+ return parseJson(message.content[0].text);
+}
 
- const content = message.content[0].text.trim();
- const jsonStr = content.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+// Zwraca { data, provider }
+async function parseInvoiceWithAI(pdfText) {
+ const config = getConfig();
+ const forceProvider = config.forceProvider || 'auto';
 
- try {
-  return JSON.parse(jsonStr);
- } catch (e) {
-  throw new Error('AI zwróciło nieprawidłowy JSON: ' + e.message);
+ if (forceProvider === 'claude') {
+  const data = await parseWithClaude(pdfText);
+  return { data, provider: 'claude' };
  }
+
+ if (forceProvider === 'gemini' && geminiClient) {
+  const data = await parseWithGemini(pdfText);
+  return { data, provider: 'gemini' };
+ }
+
+ // auto: Gemini first, Claude as fallback
+ if (geminiClient) {
+  try {
+   const data = await parseWithGemini(pdfText);
+   return { data, provider: 'gemini' };
+  } catch (err) {
+   try { trackFallback(err.message); } catch {}
+   console.warn('[AI] Gemini failed, falling back to Claude:', err.message);
+  }
+ }
+
+ const data = await parseWithClaude(pdfText);
+ return { data, provider: 'claude' };
 }
 
 module.exports = { parseInvoiceWithAI };
