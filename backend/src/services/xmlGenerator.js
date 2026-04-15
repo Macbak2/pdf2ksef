@@ -52,15 +52,14 @@ function generateXml(data) {
 
  // PODMIOT1 (Sprzedawca)
  const podmiot1 = faktura.ele('Podmiot1');
+ podmiot1.ele('PrefiksPodatnika').txt(seller.country || 'PL');
  const daneId1 = podmiot1.ele('DaneIdentyfikacyjne');
  daneId1.ele('NIP').txt(cleanNip(seller.nip));
  daneId1.ele('Nazwa').txt(seller.name || '');
  const adres1 = podmiot1.ele('Adres');
  adres1.ele('KodKraju').txt(seller.country || 'PL');
- adres1.ele('AdresL1').txt(seller.address || '');
- if (seller.postalCode || seller.city) {
-  adres1.ele('AdresL2').txt([seller.postalCode, seller.city].filter(Boolean).join(' '));
- }
+ const adresL1Seller = [seller.address, [seller.postalCode, seller.city].filter(Boolean).join(' ')].filter(Boolean).join('\n');
+ adres1.ele('AdresL1').txt(adresL1Seller || '');
 
  // PODMIOT2 (Nabywca)
  const podmiot2 = faktura.ele('Podmiot2');
@@ -90,10 +89,8 @@ function generateXml(data) {
 
  const adres2 = podmiot2.ele('Adres');
  adres2.ele('KodKraju').txt(buyer.country || 'PL');
- adres2.ele('AdresL1').txt(buyer.address || '');
- if (buyer.postalCode || buyer.city) {
-  adres2.ele('AdresL2').txt([buyer.postalCode, buyer.city].filter(Boolean).join(' '));
- }
+ const adresL1Buyer = [buyer.address, [buyer.postalCode, buyer.city].filter(Boolean).join(' ')].filter(Boolean).join(' ');
+ adres2.ele('AdresL1').txt(adresL1Buyer || '');
 
  podmiot2.ele('JST').txt('2');
  podmiot2.ele('GV').txt('2');
@@ -151,6 +148,11 @@ function generateXml(data) {
  }
 
  fa.ele('P_15').txt(formatAmount(t.totalGross || 0));
+
+ // KURS WALUTY (przed Adnotacje — wg schematu XSD)
+ if (exRate && (invoice.currency || 'PLN') !== 'PLN') {
+  fa.ele('KursWalutyZ').txt(formatAmount(exRate, 6));
+ }
 
  // ADNOTACJE
  const adnotacje = fa.ele('Adnotacje');
@@ -216,32 +218,22 @@ function generateXml(data) {
   wiersz.ele('P_12').txt(mapVatRate(item.vatRate));
  });
 
- // PLATNOSC
- const platnosc = fa.ele('Platnosc');
- if (payment && payment.dueDate) {
-  platnosc.ele('TerminPlatnosci').ele('Termin').txt(formatDate(payment.dueDate));
- }
- if (payment && payment.form) {
-  platnosc.ele('FormaPlatnosci').txt(
-   payment.form === 'przelew' ? '6' :
-    payment.form === 'gotówka' || payment.form === 'gotowka' ? '1' :
-     payment.form === 'karta' ? '2' : '6'
-  );
- }
- if (payment && payment.bankAccount) {
-  platnosc.ele('RachunekBankowy').ele('NrRB').txt(cleanIban(payment.bankAccount));
- }
-
- // KURS WALUTY
- if (exchangeRate && exchangeRate.rate && (invoice.currency || 'PLN') !== 'PLN') {
-  const kurs = fa.ele('KursWalutyZ');
-  kurs.ele('KodWalutyZ').txt(exchangeRate.currency || invoice.currency);
-  kurs.ele('KursZ').txt(formatAmount(exchangeRate.rate, 4));
-  if (exchangeRate.date) {
-   kurs.ele('DataKursuZ').txt(formatDate(exchangeRate.date));
+ // PLATNOSC — tylko jeśli są dane płatności
+ const hasPayment = payment && (payment.dueDate || payment.form || payment.bankAccount);
+ if (hasPayment) {
+  const platnosc = fa.ele('Platnosc');
+  if (payment.dueDate) {
+   platnosc.ele('TerminPlatnosci').ele('Termin').txt(formatDate(payment.dueDate));
   }
-  if (exchangeRate.table) {
-   kurs.ele('TabelaKursowZ').txt(exchangeRate.table);
+  if (payment.form) {
+   platnosc.ele('FormaPlatnosci').txt(
+    payment.form === 'przelew' ? '6' :
+     payment.form === 'gotówka' || payment.form === 'gotowka' ? '1' :
+      payment.form === 'karta' ? '2' : '6'
+   );
+  }
+  if (payment.bankAccount) {
+   platnosc.ele('RachunekBankowy').ele('NrRB').txt(cleanIban(payment.bankAccount));
   }
  }
 
