@@ -33,14 +33,14 @@ function generateXml(data) {
  const { seller, buyer, invoice, items, totals, annotations, payment, exchangeRate, correction } = data;
 
  const now = new Date();
- const dataWytworzenia = now.toISOString().replace(/\.\d{3}Z$/, 'Z');
+ const dataWytworzenia = now.toISOString();
 
  const doc = create({ version: '1.0', encoding: 'UTF-8' });
 
  const faktura = doc.ele('Faktura', {
-  'xmlns': 'http://crd.gov.pl/wzor/2025/06/25/13775/',
   'xmlns:xsi': 'http://www.w3.org/2001/XMLSchema-instance',
-  'xsi:schemaLocation': 'http://crd.gov.pl/wzor/2025/06/25/13775/ https://crd.gov.pl/wzor/2025/06/25/13775/schemat.xsd'
+  'xmlns:xsd': 'http://www.w3.org/2001/XMLSchema',
+  'xmlns': 'http://crd.gov.pl/wzor/2025/06/25/13775/'
  });
 
  // NAGLOWEK
@@ -48,7 +48,7 @@ function generateXml(data) {
  naglowek.ele('KodFormularza', { kodSystemowy: 'FA (3)', wersjaSchemy: '1-0E' }).txt('FA');
  naglowek.ele('WariantFormularza').txt('3');
  naglowek.ele('DataWytworzeniaFa').txt(dataWytworzenia);
- naglowek.ele('SystemInfo').txt('pdf2ksef v1.0');
+ naglowek.ele('SystemInfo').txt('Aplikacja Podatnika KSeF');
 
  // PODMIOT1 (Sprzedawca)
  const podmiot1 = faktura.ele('Podmiot1');
