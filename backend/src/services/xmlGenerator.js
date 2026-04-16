@@ -33,7 +33,7 @@ function generateXml(data) {
  const { seller, buyer, invoice, items, totals, annotations, payment, exchangeRate, correction } = data;
 
  const now = new Date();
- const dataWytworzenia = now.toISOString();
+ const dataWytworzenia = now.toISOString().replace(/\.(\d{3})Z$/, '.$1000Z');
 
  const doc = create({ version: '1.0', encoding: 'UTF-8' });
 

@@ -121,7 +121,8 @@ Ważne zasady:
 - Daty w formacie YYYY-MM-DD
 - NIP bez kresek i spacji
 - WALUTA KWOT: Wszystkie wartości w polach totals (net, vat) oraz w pozycjach faktury (netValue, vatAmount, grossValue, unitPriceNet) podaj w walucie faktury (pole invoice.currency). Jeśli faktura jest w EUR, wszystkie kwoty mają być w EUR — NIE przeliczaj na PLN.
-- KODOWANIE ZNAKÓW: Tekst PDF może zawierać artefakty błędnego kodowania. Popraw wszystkie błędnie zakodowane polskie znaki — np. "PrzemyÅl" popraw na "Przemyśl", "Å‚" na "ł", "Å›" na "ś", "Ä™" na "ę", "Ä…" na "ą", "Å¼" na "ż", "Åº" na "ź", "Ä" na "ć", "Åˆ" na "ń", "Å"" na "ó".`;
+- KODOWANIE ZNAKÓW: Tekst PDF może zawierać artefakty błędnego kodowania. Popraw wszystkie błędnie zakodowane polskie znaki — np. "PrzemyÅl" popraw na "Przemyśl", "Å‚" na "ł", "Å›" na "ś", "Ä™" na "ę", "Ä…" na "ą", "Å¼" na "ż", "Åº" na "ź", "Ä" na "ć", "Åˆ" na "ń", "Å"" na "ó". Popraw też błędnie zdekodowane myślniki: znak "â" lub "â€"" lub "â€™" między słowami zastąp zwykłym myślnikiem "-".
+- SPACJE: Jeśli tekst PDF wygląda na scalony bez spacji, zrekonstruuj spacje logicznie rozpoznając granice słów. Wskazówki: przejście małe→duże litery sugeruje nowe słowo (np. "exportUE" → "export UE"), kolejne wielkie litery po sobie to skrót lub akronim ("MBE" zostaje), cyfry oddzielone od liter to osobne elementy ("strefa6" → "strefa 6"). Przykład: "MBEexportUEstrefa6-expressaver" → "MBE export UE strefa 6-express aver". Myślnik bez spacji (wyraz1-wyraz2) zostaw bez zmian jeśli tak jest w oryginale.`;
 
 function parseJson(text) {
  const cleaned = text.trim().replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
